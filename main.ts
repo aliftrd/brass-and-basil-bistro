@@ -8,15 +8,25 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
-function setReadablePermissions(targetPath: string): void {
+function setReadablePermissions(targetPath, isRoot = false) {
   const stats = statSync(targetPath);
   if (stats.isDirectory()) {
-    chmodSync(targetPath, 0o755);
+    if (!isRoot) {
+      try {
+        chmodSync(targetPath, 0o755);
+      } catch {
+        // Ignore if directory ownership prevents chmod.
+      }
+    }
     for (const entry of readdirSync(targetPath)) {
-      setReadablePermissions(join(targetPath, entry));
+      setReadablePermissions(join(targetPath, entry), false);
     }
   } else {
-    chmodSync(targetPath, 0o644);
+    try {
+      chmodSync(targetPath, 0o644);
+    } catch {
+      // Ignore if file ownership prevents chmod.
+    }
   }
 }
 
@@ -44,4 +54,4 @@ if (dossierBuffer.byteLength > 1572864) {
 }
 
 writeFileSync(join(outDir, 'dossier.json'), dossierBuffer);
-setReadablePermissions(outDir);
+setReadablePermissions(outDir, true);
